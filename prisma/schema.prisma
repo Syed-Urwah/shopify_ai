@@ -1,0 +1,26 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+  adapter  = "pg" // Required for Prisma 7+ to specify the database driver
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model PriceHistory {
+  id        String   @id @default(uuid())
+  productId String   // The numeric ID of the Shopify product
+  oldPrice  Float
+  newPrice  Float
+  changeDate DateTime @default(now())
+  inventory_level String // Added by user
+  reason    String?  // Optional reason for the price change
+
+  @@map("price_history") // Maps the model name to a snake_case table name
+}
