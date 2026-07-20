@@ -11,6 +11,9 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  // The 'url' property is no longer supported here in Prisma 7+.
+  // It will be configured in prisma.config.ts for Migrate,
+  // and via the adapter for the Prisma Client.
 }
 
 model PriceHistory {
@@ -23,4 +26,14 @@ model PriceHistory {
   reason    String?  // Optional reason for the price change
 
   @@map("price_history") // Maps the model name to a snake_case table name
+}
+
+model MerchantSettings {
+  id                 String    @id @default(uuid())
+  inventoryThreshold Int
+  maxPrice           Float
+  reviewFrequency    Int
+  aiBehaviourPrompt  String?   // Optional prompt for AI behavior
+
+  @@map("merchant_settings") // Maps the model name to a snake_case table name
 }
