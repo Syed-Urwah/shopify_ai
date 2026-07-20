@@ -1,9 +1,9 @@
 // 'use server';
 
-import 'server-only';
+// import 'server-only';
 
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
-const SHOPIFY_ADMIN_ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN
+const SHOPIFY_ADMIN_ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
 
 if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ADMIN_ACCESS_TOKEN) {
   throw new Error(
@@ -11,7 +11,8 @@ if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ADMIN_ACCESS_TOKEN) {
   );
 }
 
-const shopifyAdminUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2026-07/graphql.json`; // Using a recent stable API version
+// Ensure the API version is consistent. Using 2024-04 as previously set.
+const shopifyAdminUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-04/graphql.json`;
 
 export async function shopifyGraphqlRequest(query: string, variables: Record<string, any> = {}) {
   const response = await fetch(shopifyAdminUrl, {
@@ -59,7 +60,31 @@ export const GET_PRODUCTS_QUERY = `
           }
           totalInventory
           status
+          variants(first: 1) { # Fetch the default variant to get its ID
+            edges {
+              node {
+                id
+                price
+              }
+            }
+          }
         }
+      }
+    }
+  }
+`;
+
+// GraphQL mutation to update a product variant's price
+export const UPDATE_PRODUCT_VARIANT_PRICE_MUTATION = `
+  mutation productVariantUpdate($input: ProductVariantInput!) {
+    productVariantUpdate(input: $input) {
+      productVariant {
+        id
+        price
+      }
+      userErrors {
+        field
+        message
       }
     }
   }
