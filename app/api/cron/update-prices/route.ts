@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { shopifyGraphqlRequest, GET_PRODUCTS_QUERY, UPDATE_PRODUCT_VARIANT_PRICE_MUTATION } from '@/app/lib/shopify';
 import { Product, ShopifyProductNode } from '@/app/lib/types';
-import { getGeminiResponse } from '@/app/lib/gemini'; // Import Gemini utility
+import { getOpenRouterResponse } from '@/app/lib/openrouter'; // Import OpenRouter utility
 
-// Helper function to get AI price recommendation using Gemini
+// Helper function to get AI price recommendation using OpenRouter
 async function getAIRecommendedPrice(
   productTitle: string,
   currentPrice: number,
@@ -29,24 +29,25 @@ async function getAIRecommendedPrice(
       For example: "123.45"
     `;
 
-    const geminiResponse = await getGeminiResponse(prompt);
+    const openRouterResponse = await getOpenRouterResponse(prompt);
+    console.log(openRouterResponse)
 
     // --- Rule 4: Invalid or malformed AI responses must be ignored safely. ---
-    if (!geminiResponse) {
-      console.warn(`Gemini returned no response for product: ${productTitle}`);
+    if (!openRouterResponse) {
+      console.warn(`OpenRouter returned no response for product: ${productTitle}`);
       return null;
     }
 
-    const recommendedPrice = parseFloat(geminiResponse.trim());
+    const recommendedPrice = parseFloat(openRouterResponse.trim());
 
     if (isNaN(recommendedPrice)) {
-      console.warn(`Gemini returned a non-numeric price for product: ${productTitle}. Response: "${geminiResponse}"`);
+      console.warn(`OpenRouter returned a non-numeric price for product: ${productTitle}. Response: "${openRouterResponse}"`);
       return null;
     }
 
     return parseFloat(recommendedPrice.toFixed(2)); // Ensure it's a number rounded to 2 decimal places
   } catch (e) {
-    console.error(`Error getting AI recommended price for ${productTitle} from Gemini:`, e);
+    console.error(`Error getting AI recommended price for ${productTitle} from OpenRouter:`, e);
     return null; // Safely ignore errors during AI call
   }
 }
@@ -80,6 +81,7 @@ export async function GET(request: Request) {
     let errorsEncountered = 0;
 
     for (const shopifyProduct of shopifyProducts) {
+      // console.log(shopifyProduct)
       productsProcessed++;
 
       const numericProductId = shopifyProduct.id.match(/\/(\d+)$/)?.[1];
@@ -140,11 +142,16 @@ export async function GET(request: Request) {
       console.log(`Updating ${shopifyProduct.title} price from ${currentPrice} to ${finalRecommendedPrice}`);
       try {
         const updateResponse = await shopifyGraphqlRequest(UPDATE_PRODUCT_VARIANT_PRICE_MUTATION, {
-          input: {
-            id: defaultVariantId,
-            price: finalRecommendedPrice.toString(), // Shopify expects price as a string
-          },
+          productId: shopifyProduct.id, // Requires parent Product GID
+          variants: [
+            {
+              id: defaultVariantId, // Variant GID
+              price: "29.99", // New price string
+            },
+          ],
         });
+
+        console.log(updateResponse)
 
         if (updateResponse.productVariantUpdate.userErrors && updateResponse.productVariantUpdate.userErrors.length > 0) {
           console.error(`Shopify update errors for ${shopifyProduct.title}:`, updateResponse.productVariantUpdate.userErrors);

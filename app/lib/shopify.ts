@@ -1,6 +1,6 @@
 // 'use server';
 
-// import 'server-only';
+import 'server-only';
 
 const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN;
 const SHOPIFY_ADMIN_ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
@@ -11,10 +11,17 @@ if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ADMIN_ACCESS_TOKEN) {
   );
 }
 
-// Ensure the API version is consistent. Using 2024-04 as previously set.
-const shopifyAdminUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-04/graphql.json`;
+// Using a slightly older, well-established stable API version
+const SHOPIFY_API_VERSION = '2026-07'; // Changed API version
+const shopifyAdminUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
 
 export async function shopifyGraphqlRequest(query: string, variables: Record<string, any> = {}) {
+  console.log('--- Shopify GraphQL Request ---');
+  console.log('URL:', shopifyAdminUrl);
+  console.log('Query:', query);
+  console.log('Variables:', JSON.stringify(variables, null, 2));
+  console.log('-----------------------------');
+
   const response = await fetch(shopifyAdminUrl, {
     method: 'POST',
     headers: {
@@ -27,12 +34,14 @@ export async function shopifyGraphqlRequest(query: string, variables: Record<str
 
   if (!response.ok) {
     const errorBody = await response.text();
+    console.error('Shopify GraphQL API raw error response:', errorBody);
     throw new Error(`Shopify GraphQL API error: ${response.status} ${response.statusText} - ${errorBody}`);
   }
 
   const jsonResponse = await response.json();
 
   if (jsonResponse.errors) {
+    console.error('Shopify GraphQL errors details:', JSON.stringify(jsonResponse.errors, null, 2));
     throw new Error(`Shopify GraphQL errors: ${JSON.stringify(jsonResponse.errors)}`);
   }
 
@@ -76,9 +85,9 @@ export const GET_PRODUCTS_QUERY = `
 
 // GraphQL mutation to update a product variant's price
 export const UPDATE_PRODUCT_VARIANT_PRICE_MUTATION = `
-  mutation productVariantUpdate($input: ProductVariantInput!) {
-    productVariantUpdate(input: $input) {
-      productVariant {
+  mutation productVariantsBulkUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
+    productVariantsBulkUpdate(productId: $productId, variants: $variants) {
+      productVariants {
         id
         price
       }
